@@ -1,0 +1,34 @@
+#run this program to test and view your imu signal live
+
+import serial
+import matplotlib.pyplot as plt
+from collections import deque
+
+# Change COM port to yours (COM3, COM4, etc.)
+ser = serial.Serial('COM5', 115200)
+
+window = 200
+xdata = deque(maxlen=window)
+ydata = deque(maxlen=window)
+zdata = deque(maxlen=window)
+
+plt.ion()
+fig, ax = plt.subplots()
+
+while True:
+    line = ser.readline().decode().strip()
+    try:
+        axv, ayv, azv = map(int, line.split(","))
+        xdata.append(axv)
+        ydata.append(ayv)
+        zdata.append(azv)
+
+        ax.clear()
+        ax.plot(xdata, label="X")
+        ax.plot(ydata, label="Y")
+        ax.plot(zdata, label="Z")
+        ax.legend()
+        ax.set_title("Live IMU Signal")
+        plt.pause(0.01)
+    except:
+        pass
