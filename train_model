@@ -1,0 +1,70 @@
+#run this program after recording all 4 data files in .csv format
+
+import pandas as pd
+import numpy as np
+
+still = pd.read_csv("still.csv")
+shake = pd.read_csv("shake.csv")
+rotate = pd.read_csv("rotate.csv")
+
+still["label"] = 0
+shake["label"] = 1
+rotate["label"] = 2
+
+data = pd.concat([still, shake, rotate])
+print(data.head())
+
+window = 100
+X = []
+y = []
+
+ax = data["ax"].values
+labels = data["label"].values
+
+for i in range(0, len(ax)-window, window):
+    segment = ax[i:i+window]
+    X.append([
+        np.mean(segment),
+        np.std(segment),
+        np.max(segment),
+        np.min(segment),
+        np.sum(segment**2)
+    ])
+    y.append(labels[i])
+
+X = np.array(X)
+y = np.array(y)
+
+from sklearn.neighbors import KNeighborsClassifier
+
+model = KNeighborsClassifier(n_neighbors=3)
+model.fit(X, y)
+print(X)
+print(y)
+
+import joblib
+
+joblib.dump(model, "imu_model.pkl")
+print("Model saved!")
+
+
+print("Training accuracy:", model.score(X, y))
+
+test = pd.read_csv("test.csv")
+ax_test = test["ax"].values
+
+features = []
+for i in range(0, len(ax_test)-window, window):
+    segment = ax_test[i:i+window]
+    features.append([
+        np.mean(segment),
+        np.std(segment),
+        np.max(segment),
+        np.min(segment),
+        np.sum(segment**2)
+    ])
+
+features = np.array(features)
+pred = model.predict(features)
+print(pred)
+
