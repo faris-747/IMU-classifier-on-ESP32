@@ -1,0 +1,20 @@
+import serial
+import time
+
+ser = serial.Serial('COM5', 115200) #change COM port number as required
+time.sleep(2)
+
+f = open("test.csv", "w")
+f.write("ax,ay,az\n")
+
+for i in range(600):   # ~1000 samples
+    line = ser.readline().decode().strip()
+    try:
+        ax, ay, az = line.split(",")
+        f.write(f"{ax},{ay},{az}\n")
+        print(ax, ay, az)
+    except:
+        pass
+
+f.close()
+print("Saved imu_data.csv")
