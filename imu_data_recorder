@@ -1,10 +1,13 @@
+#record motion mixed with roll shake and still movements while recording test
+#while recording motion specific data like roll, shake or still, record only that particular motion
+
 import serial
 import time
 
 ser = serial.Serial('COM5', 115200) #change COM port number as required
 time.sleep(2)
 
-f = open("test.csv", "w")
+f = open("test.csv", "w") #make files for roll shake and still also
 f.write("ax,ay,az\n")
 
 for i in range(600):   # ~1000 samples
@@ -17,4 +20,4 @@ for i in range(600):   # ~1000 samples
         pass
 
 f.close()
-print("Saved imu_data.csv")
+print("Saved imu_data.csv") 
