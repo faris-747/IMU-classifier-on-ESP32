@@ -1,0 +1,127 @@
+#include <Wire.h>
+#include <math.h>
+float getAccelX() {
+  return random(-10000,10000); //simulates imu sensor readings rather than using an actual sensor
+}
+
+
+#define NUM_TRAIN 17
+#define NUM_FEATURES 5
+#define WINDOW 100
+
+// ---------- MODEL (GLOBAL) ----------
+// replace with values of your model from the file exported by python
+float X_train[NUM_TRAIN][NUM_FEATURES] = {
+ {-3.19200000e+01,1.09360293e+02,2.92000000e+02,-4.32000000e+02, 1.29785600e+06},
+ {-1.53720000e+02, 7.15525094e+01, 4.80000000e+01,-4.04000000e+02, 2.87496000e+06},
+ {-1.72160000e+02, 9.57110986e+01, 4.40000000e+01, -3.72000000e+02, 3.87996800e+06},
+ {-2.62080000e+02, 1.25568760e+02,4.40000000e+01, -6.32000000e+02, 8.44534400e+06},
+ {-3.04280000e+02,9.22765496e+01,-7.60000000e+01,-5.96000000e+02,1.01101280e+07},
+ {-3.20280000e+02,9.13056493e+01,-7.20000000e+01,-5.20000000e+02,1.10916000e+07},
+ {5.93640000e+02,2.98600520e+02,1.44800000e+03,-3.16000000e+02,4.41570720e+07},
+ {4.50000000e+02,3.93507916e+02,1.35200000e+03,-4.16000000e+02,3.57348480e+07},
+ {7.91760000e+02,6.57798466e+02,2.21200000e+03,-9.32000000e+02,1.05958272e+08},
+ {1.22788000e+03,7.64434736e+02,2.61200000e+03,-1.80000000e+02,2.09204976e+08},
+ {1.55464000e+03,3.10341583e+03,1.14360000e+04,-2.96400000e+03,1.20480954e+09},
+ {1.34424000e+03,4.46974834e+02,2.68000000e+03,4.80000000e+01,2.00676768e+08},
+ {9.01056000e+03,6.13901028e+03,1.77200000e+04,-5.18000000e+03,1.18877639e+10},
+ {5.26828000e+03,5.55726446e+03,1.60640000e+04,-3.80400000e+03,5.86379624e+09},
+ {4.39648000e+03,5.87156727e+03,1.70440000e+04,-3.28800000e+03,5.38043386e+09},
+ {4.16196000e+03,9.36927502e+03,1.65280000e+04,-1.50120000e+04,1.05105225e+10},
+ {5.43504000e+03,5.76364615e+03,1.41680000e+04,-8.96000000e+03,6.27592768e+09}
+};
+
+int y_train[NUM_TRAIN] = {
+  0,0,0,0,0,0,1,1,1,1,1,1,2,2,2,2,2
+};
+
+// ---------- BUFFERS (GLOBAL) ----------
+float buffer[WINDOW];
+int idx = 0;
+
+// ---------- MATH FUNCTIONS ----------
+float mean(float *x, int N) {
+  float s = 0;
+  for(int i=0;i<N;i++) s += x[i];
+  return s/N;
+}
+
+float stddev(float *x, int N, float m) {
+  float s = 0;
+  for(int i=0;i<N;i++) s += (x[i]-m)*(x[i]-m);
+  return sqrt(s/N);
+}
+
+float energy(float *x, int N) {
+  float s = 0;
+  for(int i=0;i<N;i++) s += x[i]*x[i];
+  return s;
+}
+
+float distance(float *a, float *b) {
+  float s = 0;
+  for(int i=0;i<NUM_FEATURES;i++)
+    s += (a[i]-b[i])*(a[i]-b[i]);
+  return sqrt(s);
+}
+
+int predict(float *feat) {
+  int best = 0;
+  float best_dist = 1e12;
+
+  for(int i=0;i<NUM_TRAIN;i++) {
+    float d = distance(feat, X_train[i]);
+    if(d < best_dist) {
+      best_dist = d;
+      best = y_train[i];
+    }
+  }
+  return best;
+}
+float max_val(float *x, int N) {
+  float m = x[0];
+  for(int i=1;i<N;i++)
+    if(x[i] > m) m = x[i];
+  return m;
+}
+
+float min_val(float *x, int N) {
+  float m = x[0];
+  for(int i=1;i<N;i++)
+    if(x[i] < m) m = x[i];
+  return m;
+}
+
+
+
+void setup() {
+  Serial.begin(115200);
+  Wire.begin();
+
+}
+
+void loop() {
+  float ax = getAccelX(); 
+
+  buffer[idx++] = ax;
+
+  if(idx == WINDOW) {
+
+    // ---- Feature extraction ----
+    float f[5];
+    f[0] = mean(buffer, WINDOW);
+    f[1] = stddev(buffer, WINDOW, f[0]);
+    f[2] = max_val(buffer, WINDOW);
+    f[3] = min_val(buffer, WINDOW);
+    f[4] = energy(buffer, WINDOW);
+    // ---- ML DECISION ----
+    int cls = predict(f);
+    if(cls==0) Serial.println("STILL");
+    if(cls==1) Serial.println("SHAKE");
+    if(cls==2) Serial.println("ROTATE");
+
+    idx = 0;
+  }
+}
+
+
